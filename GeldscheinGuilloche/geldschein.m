@@ -1,4 +1,4 @@
-%function geldschein()
+function geldschein()
 
 scale=1900/1300;
 scale=1;
@@ -21,13 +21,33 @@ tmax=35;
 gr_ausschlag=ymax*0.023;
 t=0:0.1:tmax;
 nmax=floor(xmax/8.3);
+fprintf('Anzahl großer Wellen (bei xmax=%d): nmax=%d\n', xmax, nmax);
+nmax=min(156, floor(xmax/8.3));
+fprintf('Anzahl großer Wellen (bei xmax=%d): nmax=%d\n', xmax, nmax);
 n0=ceil(nmax*gr_ausschlag/ymax);
-n1=round(nmax*0.17);
+n3=round(nmax*0.33);
 n2=round(nmax*0.24);
-n3=2*n2-n1;
+n1=2*n2-n3;
 d=n0+1; % == Abstand der ersten liene zur Mitte des dicken Bandes
-for n=[-n0:(n1-d) (n1+n2)/2 (n2+n3)/2 (n3+d):(nmax+n0)]
-    plot(t*xmax/tmax,n*ymax/nmax+cos(t)*gr_ausschlag,'Color',col)
+nn1=[-n0:(n1-d) (n1+n2)/2 (n2+n3)/2 (n3+d):(nmax+n0)];
+if 0 % enable for no color and no distance change
+    nn=nn1;
+    col_f=ones(size(nn1));
+else
+    nn1_diff=diff(nn1);
+    nn2=cumsum([nn1(1) nn1_diff]); assert(isequal(nn1,nn2));
+    rr=0:numel(nn1); r0=floor(numel(nn1)*0.4);
+    rr_phi = rr *2.5*pi / max(rr);
+    nn3_d=0.75+0.25*cos(rr_phi);
+    nn3_diff=nn1_diff; % part will be overwritten in next line
+    nn3_diff(r0+rr)=nn3_d;
+    nn3=cumsum([nn1(1) nn3_diff]);
+    nn=nn3;
+    col_f=ones(size(nn1));
+    col_f(r0+rr+1)=max(1,1+3*(1-cos(rr_phi)));
+end
+for i=1:numel(nn); n=nn(i);
+    plot(t*xmax/tmax,n*ymax/nmax+cos(t)*gr_ausschlag,'Color',col/col_f(i))
 end
 % die drei dickeren große wellen
 for ph=(0.5:6)*2*pi/6; n=n1; % = 10, wenn nmax=60
@@ -40,6 +60,13 @@ col=[1 0.9 0.4];
 for ph=(0.5:9)*2*pi/9; n=n2; % = 15, wenn nmax=60
     plot(t*xmax/tmax,n*ymax/nmax+(cos(t)+cos(t+ph))*gr_ausschlag,'Color',col)
 end
+%% rand0 oben und unten, wellen löschen:
+y_bot_top = [3 ymax-3];
+kette_lin=[0 y_bot_top(1); xmax y_bot_top(1); xmax -9; 0 -9];
+patch(kette_lin(:,1), kette_lin(:,2), 'white', 'EdgeColor','white')
+kette_lin=[0 y_bot_top(2); xmax y_bot_top(2); xmax ymax+9; 0 ymax+9];
+patch(kette_lin(:,1), kette_lin(:,2), 'white', 'EdgeColor','white')
+
 %% rand1 oben und unten, der größere graue
 colrnd=[116 148 160]/256;
 col=colrnd;
@@ -49,12 +76,12 @@ nr = size(kette_rnd,1);
 kette_rnd(1:end,1)=(1:nr)*xmax*1.2/nr - xmax/10;
 kette_rnd=kette_feiner(kette_rnd, 0, 7);
 kette_rnd=kette_gleicher(kette_rnd, 0, xmax*1.2);
-kette_lin=kette_rnd; kette_lin(:,2)=0;
+kette_lin=kette_rnd; kette_lin(:,2)=y_bot_top(1);
 %plot(kette_rnd(:,1), kette_rnd(:,2), 'g.-')
 %plot(kette_lin(:,1), kette_lin(:,2), 'g.-')
 ketten_fill(kette_lin,kette_rnd,10,10, col)
 
-kette_lin(:,2)=ymax;
+kette_lin(:,2)=y_bot_top(2);
 kette_rnd(:,2)=ymax-kette_rnd(:,2);
 %plot(kette_rnd(:,1), kette_rnd(:,2), 'g.-')
 %plot(kette_lin(:,1), kette_lin(:,2), 'g.-')
@@ -68,12 +95,12 @@ nr = size(kette_rnd,1);
 kette_rnd(1:end,1)=(1:nr)*xmax*1.3/nr - xmax/10;
 kette_rnd=kette_feiner(kette_rnd, 0, 8);
 kette_rnd=kette_gleicher(kette_rnd, 0, xmax*1.3);
-kette_lin=kette_rnd; kette_lin(:,2)=0;
+kette_lin=kette_rnd; kette_lin(:,2)=y_bot_top(1);
 kplot(kette_rnd, 'g-')
 %kplot(kette_lin, 'g.-')
 ketten_fill(kette_lin,kette_rnd,13,7, col)
 
-kette_lin(:,2)=ymax;
+kette_lin(:,2)=y_bot_top(2);
 kette_rnd2=kette_rnd;
 kette_rnd2(:,2)=ymax-kette_rnd2(:,2);
 kette_lin(:,1)=kette_lin(:,1)-xmax*0.14;
@@ -85,8 +112,8 @@ ketten_fill(kette_lin,kette_rnd2,13,7, col)
 
 %% rechter senkrechter streifen
 col=colrnd;
-x1=0.90*xmax;
-x2=0.95*xmax;
+x1=0.87*xmax;
+x2=0.93*xmax;
 xsf=0.85; % x-stretch faktor
 ysf=0.73; % y-stretch faktor
 sen_lin_li = [x1-0.0*kette_rnd(:,2) kette_rnd(:,1)*ysf];
@@ -120,7 +147,14 @@ ros_innen = [];
 %kplot(ros_ausen,'ro-')
 
 %% final
+fname = 'Hintergrund_04.png';
 axis([0 xmax 0 ymax]);
 dataFrame = getframe(gca);
 [im,imMap] = frame2im(dataFrame);
-imwrite(im(3+(1:ymax),3+(1:xmax),:),'Hintergrund_03.png');
+imwrite(im(2+(1:ymax),2+(1:xmax),:),fname);
+%% verify
+f2=figure(2);
+img=imread(fname);
+subplot(2,1,1); image(img(1:33,1:100,:))
+subplot(2,1,2); image(img((end-32):end,1:100,:))
+fprintf('size(img) = [%s]\n', sprintf('%d ', size(img)))
